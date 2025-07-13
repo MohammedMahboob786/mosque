@@ -1,0 +1,48 @@
+CREATE DATABASE azan_app;
+USE azan_app;
+
+CREATE TABLE mosque (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    mosque_id VARCHAR(100) UNIQUE,
+    name VARCHAR(255),
+    location VARCHAR(255),
+    admin_email VARCHAR(255)
+);
+
+-- Azan Timings
+CREATE TABLE azan_timings (
+    mosque_id VARCHAR(100) PRIMARY KEY,
+    fajr TIME,
+    zuhr TIME,
+    asr TIME,
+    maghrib TIME,
+    isha TIME,
+    updated_at DATETIME DEFAULT NOW(),
+    FOREIGN KEY (mosque_id) REFERENCES mosque(mosque_id) ON DELETE CASCADE
+);
+
+-- Namaz Timings
+CREATE TABLE namaz_timings (
+    mosque_id VARCHAR(100) PRIMARY KEY,
+    fajr TIME,
+    zuhr TIME,
+    asr TIME,
+    maghrib TIME,
+    isha TIME,
+    updated_at DATETIME DEFAULT NOW(),
+    FOREIGN KEY (mosque_id) REFERENCES mosque(mosque_id) ON DELETE CASCADE
+);
+
+-- User Subscription
+CREATE TABLE user_subscription (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id VARCHAR(100),
+    mosque_id VARCHAR(100),
+    FOREIGN KEY (mosque_id) REFERENCES mosque(mosque_id) ON DELETE CASCADE
+);
+
+
+ALTER TABLE user_subscription ADD UNIQUE(user_id, mosque_id);
+
+
+ALTER TABLE mosque ADD COLUMN password VARCHAR(255);

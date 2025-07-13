@@ -205,3 +205,28 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Logs
+mosque-app/logs
+mosque-app/*.log
+mosque-app/npm-debug.log*
+mosque-app/yarn-debug.log*
+mosque-app/yarn-error.log*
+mosque-app/pnpm-debug.log*
+mosque-app/lerna-debug.log*
+
+mosque-app/node_modules
+mosque-app/dist
+mosque-app/dist-ssr
+mosque-app/*.local
+
+# Editor directories and files
+mosque-app/.vscode/*
+mosque-app/!.vscode/extensions.json
+mosque-app/.idea
+mosque-app/.DS_Store
+mosque-app/*.suo
+mosque-app/*.ntvs*
+mosque-app/*.njsproj
+mosque-app/*.sln
+mosque-app/*.sw?
