@@ -199,21 +199,221 @@ def get_timings_for_user(request, mosque_id):
     })
 
 
-@api_view(['POST'])
-def subscribe_user_to_mosque(request):
-    data = request.data
+# @api_view(['POST'])
+# def subscribe_user_to_mosque(request):
+#     data = request.data
+#     db = get_db_connection()
+#     cursor = db.cursor()
+
+#     cursor.execute("""
+#         INSERT INTO user_subscription (user_id, mosque_id)
+#         VALUES (%s, %s)
+#     """, (
+#         data.get('user_id'),
+#         data.get('mosque_id')
+#     ))
+
+#     db.commit()
+#     db.close()
+
+#     return Response({"message": "User subscribed successfully"})
+
+@api_view(['GET'])
+def get_user_subscriptions(request, user_id):
     db = get_db_connection()
     cursor = db.cursor()
 
+    # Get all mosque_ids the user is subscribed to
     cursor.execute("""
-        INSERT INTO user_subscription (user_id, mosque_id)
-        VALUES (%s, %s)
-    """, (
-        data.get('user_id'),
-        data.get('mosque_id')
-    ))
+        SELECT m.mosque_id, m.name
+        FROM user_subscription us
+        JOIN mosque m ON us.mosque_id = m.mosque_id
+        WHERE us.user_id = %s
+    """, (user_id,))
+    mosque_rows = cursor.fetchall()
+
+    subscriptions = []
+
+    for mosque_id, mosque_name in mosque_rows:
+        # Fetch azan timings
+        cursor.execute("""
+            SELECT fajr, zuhr, asr, maghrib, isha FROM azan_timings
+            WHERE mosque_id = %s
+        """, (mosque_id,))
+        azan_row = cursor.fetchone()
+
+        # Fetch namaz timings
+        cursor.execute("""
+            SELECT fajr, zuhr, asr, maghrib, isha FROM namaz_timings
+            WHERE mosque_id = %s
+        """, (mosque_id,))
+        namaz_row = cursor.fetchone()
+
+        subscriptions.append({
+            "mosque_id": mosque_id,
+            "mosque_name": mosque_name,
+            "azan_timings": {
+                "fajr": azan_row[0] if azan_row else None,
+                "zuhr": azan_row[1] if azan_row else None,
+                "asr": azan_row[2] if azan_row else None,
+                "maghrib": azan_row[3] if azan_row else None,
+                "isha": azan_row[4] if azan_row else None,
+            },
+            "namaz_timings": {
+                "fajr": namaz_row[0] if namaz_row else None,
+                "zuhr": namaz_row[1] if namaz_row else None,
+                "asr": namaz_row[2] if namaz_row else None,
+                "maghrib": namaz_row[3] if namaz_row else None,
+                "isha": namaz_row[4] if namaz_row else None,
+            }
+        })
+
+    db.close()
+
+    return Response(subscriptions)
+
+
+# @api_view(['POST'])
+# def subscribe_user_to_mosque(request):
+#     data = request.data
+#     user_id = data.get('user_id')
+#     mosque_id = data.get('mosque_id')
+#     preferred = data.get('preferred', False)
+
+#     db = get_db_connection()
+#     cursor = db.cursor()
+
+#     # If preferred is True, unset preferred from all others
+#     if preferred:
+#         cursor.execute("""
+#             UPDATE user_subscription SET preferred = FALSE WHERE user_id = %s
+#         """, (user_id,))
+
+#     # Insert or update the subscription
+#     cursor.execute("""
+#         INSERT INTO user_subscription (user_id, mosque_id, preferred)
+#         VALUES (%s, %s, %s)
+#         ON DUPLICATE KEY UPDATE preferred = VALUES(preferred)
+#     """, (user_id, mosque_id, preferred))
+
+#     db.commit()
+#     db.close()
+
+#     return Response({"message": "User subscribed successfully"})
+
+@api_view(['POST'])
+def subscribe_user_to_mosque(request):
+    data = request.data
+    user_id = data.get('user_id')
+    mosque_id = data.get('mosque_id')
+    preferred = data.get('preferred', False)
+
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    # Check if user already has any subscription
+    cursor.execute("SELECT COUNT(*) FROM user_subscription WHERE user_id = %s", (user_id,))
+    (subscription_count,) = cursor.fetchone()
+
+    if subscription_count == 0:
+        preferred = True  # First time user, set preferred to True
+
+    # If preferred is True, unset preferred from all other mosques
+    if preferred:
+        cursor.execute("""
+            UPDATE user_subscription SET preferred = FALSE WHERE user_id = %s
+        """, (user_id,))
+
+    # Insert or update the subscription
+    cursor.execute("""
+        INSERT INTO user_subscription (user_id, mosque_id, preferred)
+        VALUES (%s, %s, %s)
+        ON DUPLICATE KEY UPDATE preferred = VALUES(preferred)
+    """, (user_id, mosque_id, preferred))
 
     db.commit()
     db.close()
 
     return Response({"message": "User subscribed successfully"})
+
+
+@api_view(['GET'])
+def get_user_preferred_mosque(request, user_id):
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        SELECT m.mosque_id, m.name
+        FROM user_subscription us
+        JOIN mosque m ON us.mosque_id = m.mosque_id
+        WHERE us.user_id = %s AND us.preferred = TRUE
+    """, (user_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        db.close()
+        return Response({"error": "No preferred mosque set"}, status=404)
+
+    mosque_id, mosque_name = row
+
+    # Fetch azan and namaz timings
+    cursor.execute("""
+        SELECT fajr, zuhr, asr, maghrib, isha FROM azan_timings
+        WHERE mosque_id = %s
+    """, (mosque_id,))
+    azan = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT fajr, zuhr, asr, maghrib, isha FROM namaz_timings
+        WHERE mosque_id = %s
+    """, (mosque_id,))
+    namaz = cursor.fetchone()
+
+    db.close()
+
+    return Response({
+        "mosque_id": mosque_id,
+        "mosque_name": mosque_name,
+        "azan_timings": {
+            "fajr": (azan[0]) if azan else None,
+            "zuhr": (azan[1]) if azan else None,
+            "asr": (azan[2]) if azan else None,
+            "maghrib": (azan[3]) if azan else None,
+            "isha": (azan[4]) if azan else None
+        },
+        "namaz_timings": {
+            "fajr": (namaz[0]) if namaz else None,
+            "zuhr": (namaz[1]) if namaz else None,
+            "asr": (namaz[2]) if namaz else None,
+            "maghrib": (namaz[3]) if namaz else None,
+            "isha": (namaz[4]) if namaz else None
+        }
+    })
+
+@api_view(['PATCH'])
+def update_preferred_mosque(request, user_id):
+    mosque_id = request.data.get("mosque_id")
+    if not mosque_id:
+        return Response({"error": "mosque_id is required"}, status=400)
+
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    # Unset all preferred
+    cursor.execute("""
+        UPDATE user_subscription
+        SET preferred = FALSE
+        WHERE user_id = %s
+    """, (user_id,))
+
+    # Set the new preferred mosque
+    cursor.execute("""
+        UPDATE user_subscription
+        SET preferred = TRUE
+        WHERE user_id = %s AND mosque_id = %s
+    """, (user_id, mosque_id))
+
+    db.commit()
+    db.close()
+
+    return Response({"message": "Preferred mosque updated successfully"})
