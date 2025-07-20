@@ -41,8 +41,9 @@ CREATE TABLE user_subscription (
     FOREIGN KEY (mosque_id) REFERENCES mosque(mosque_id) ON DELETE CASCADE
 );
 
-
 ALTER TABLE user_subscription ADD UNIQUE(user_id, mosque_id);
+
+ALTER TABLE user_subscription ADD COLUMN preferred BOOLEAN DEFAULT FALSE;
 
 
 ALTER TABLE mosque ADD COLUMN password VARCHAR(255);
