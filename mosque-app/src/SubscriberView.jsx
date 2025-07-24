@@ -47,6 +47,8 @@ function SubscriberView() {
 
       {timings && (
         <div>
+          <h3>🕌 Mosque: {timings.mosque_name}</h3>
+          
           <h3>Azan Timings</h3>
           <ul>
             {Object.entries(timings.azan_timings).map(([k, v]) => (
