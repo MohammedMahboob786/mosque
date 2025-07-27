@@ -163,6 +163,11 @@ def get_timings_for_user(request, mosque_id):
     db = get_db_connection()
     cursor = db.cursor()
 
+    # Get mosque name
+    cursor.execute("SELECT name FROM mosque WHERE mosque_id = %s", (mosque_id,))
+    mosque_row = cursor.fetchone()
+    mosque_name = mosque_row[0] if mosque_row else None
+
     # Get latest Azan timings
     cursor.execute("""
         SELECT fajr, zuhr, asr, maghrib, isha, updated_at
@@ -180,6 +185,7 @@ def get_timings_for_user(request, mosque_id):
     db.close()
 
     return Response({
+        "mosque_name": mosque_name,
         "azan_timings": {
             "fajr": str(azan_row[0]) if azan_row else None,
             "zuhr": str(azan_row[1]) if azan_row else None,
@@ -197,7 +203,6 @@ def get_timings_for_user(request, mosque_id):
             "updated_at": str(namaz_row[5]) if namaz_row else None
         }
     })
-
 
 # @api_view(['POST'])
 # def subscribe_user_to_mosque(request):
